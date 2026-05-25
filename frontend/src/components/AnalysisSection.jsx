@@ -27,12 +27,16 @@ export default function AnalysisSection({ similarity, analysis }) {
               <span>턴어라운드 {analysis.poseIndex}번 이미지</span>
             </div>
             <div>
-              <strong>색감 유사도</strong>
+              <strong>부위별 색감</strong>
               <span>{analysis.colorScore.toFixed(1)}%</span>
             </div>
             <div>
               <strong>형태 유사도</strong>
               <span>{analysis.shapeScore.toFixed(1)}%</span>
+            </div>
+            <div>
+              <strong>특징 요소</strong>
+              <span>{analysis.featureScore.toFixed(1)}%</span>
             </div>
           </div>
         </div>

@@ -241,22 +241,366 @@ function computeSignatureSimilarity(referenceSignature, targetSignature) {
   return clamp(score - redPenalty - otherPenalty, 0, 1);
 }
 
+function getMaskBounds(maskInfo) {
+  let minX = RESIZE;
+  let minY = RESIZE;
+  let maxX = 0;
+  let maxY = 0;
+
+  for (let y = 0; y < RESIZE; y += 1) {
+    for (let x = 0; x < RESIZE; x += 1) {
+      if (maskInfo.mask[y * RESIZE + x] !== 1) {
+        continue;
+      }
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+
+  if (minX > maxX || minY > maxY) {
+    return { minX: 0, minY: 0, maxX: RESIZE - 1, maxY: RESIZE - 1 };
+  }
+
+  return { minX, minY, maxX, maxY };
+}
+
+function resolveRegion(bounds, region) {
+  const width = bounds.maxX - bounds.minX + 1;
+  const height = bounds.maxY - bounds.minY + 1;
+
+  return {
+    minX: Math.round(bounds.minX + width * region.x1),
+    maxX: Math.round(bounds.minX + width * region.x2),
+    minY: Math.round(bounds.minY + height * region.y1),
+    maxY: Math.round(bounds.minY + height * region.y2)
+  };
+}
+
+function emptySignature() {
+  return {
+    ratios: { black: 0, white: 0, green: 0, yellowOrange: 0, red: 0, other: 0 },
+    valid: 0
+  };
+}
+
+function computeRegionSignature(data, maskInfo, bounds, region) {
+  const rect = resolveRegion(bounds, region);
+  const counts = {
+    black: 0,
+    white: 0,
+    green: 0,
+    yellowOrange: 0,
+    red: 0,
+    other: 0
+  };
+  let valid = 0;
+
+  for (let y = Math.max(0, rect.minY); y <= Math.min(RESIZE - 1, rect.maxY); y += 1) {
+    for (let x = Math.max(0, rect.minX); x <= Math.min(RESIZE - 1, rect.maxX); x += 1) {
+      const pixelIndex = y * RESIZE + x;
+      if (maskInfo.mask[pixelIndex] !== 1) {
+        continue;
+      }
+
+      const dataIndex = pixelIndex * 4;
+      const category = classifySignatureColor(
+        data[dataIndex],
+        data[dataIndex + 1],
+        data[dataIndex + 2],
+        data[dataIndex + 3]
+      );
+
+      if (category === "none") {
+        continue;
+      }
+
+      counts[category] += 1;
+      valid += 1;
+    }
+  }
+
+  if (valid === 0) {
+    return emptySignature();
+  }
+
+  return {
+    ratios: {
+      black: counts.black / valid,
+      white: counts.white / valid,
+      green: counts.green / valid,
+      yellowOrange: counts.yellowOrange / valid,
+      red: counts.red / valid,
+      other: counts.other / valid
+    },
+    valid
+  };
+}
+
+function focusedColorScore(referenceSignature, targetSignature, categories, minReferenceRatio = 0.025) {
+  const refTotal = categories.reduce((sum, category) => sum + referenceSignature.ratios[category], 0);
+  if (referenceSignature.valid < 18 || refTotal < minReferenceRatio) {
+    return null;
+  }
+
+  const targetTotal = categories.reduce((sum, category) => sum + targetSignature.ratios[category], 0);
+  const presence = 1 - Math.min(1, Math.abs(targetTotal - refTotal) / Math.max(0.1, refTotal + 0.05));
+  const distribution =
+    categories.reduce((sum, category) => {
+      const diff = Math.abs(referenceSignature.ratios[category] - targetSignature.ratios[category]);
+      return sum + (1 - Math.min(1, diff / Math.max(0.08, referenceSignature.ratios[category] + 0.05)));
+    }, 0) / categories.length;
+
+  return clamp((presence * 0.7 + distribution * 0.3) * 100, 0, 100);
+}
+
+const PART_REGIONS = [
+  {
+    key: "head",
+    label: "머리",
+    region: { x1: 0.2, y1: 0, x2: 0.8, y2: 0.34 },
+    categories: ["black"],
+    weight: 1.2
+  },
+  {
+    key: "eyes",
+    label: "눈",
+    region: { x1: 0.27, y1: 0.08, x2: 0.73, y2: 0.32 },
+    categories: ["black"],
+    weight: 1
+  },
+  {
+    key: "beak",
+    label: "부리",
+    region: { x1: 0.34, y1: 0.22, x2: 0.66, y2: 0.44 },
+    categories: ["yellowOrange"],
+    weight: 1.15
+  },
+  {
+    key: "cheeks",
+    label: "볼/노란 포인트",
+    region: { x1: 0.08, y1: 0.28, x2: 0.92, y2: 0.58 },
+    categories: ["yellowOrange"],
+    weight: 1.05
+  },
+  {
+    key: "arms",
+    label: "팔",
+    region: { x1: 0, y1: 0.34, x2: 1, y2: 0.78 },
+    categories: ["black"],
+    weight: 1.1
+  },
+  {
+    key: "feet",
+    label: "발",
+    region: { x1: 0.18, y1: 0.78, x2: 0.82, y2: 1 },
+    categories: ["black"],
+    weight: 0.95
+  },
+  {
+    key: "body",
+    label: "배/얼굴 흰색",
+    region: { x1: 0.24, y1: 0.2, x2: 0.76, y2: 0.88 },
+    categories: ["white"],
+    weight: 0.85
+  }
+];
+
+function computePartColorDetail(refData, targetData, maskInfo) {
+  const bounds = getMaskBounds(maskInfo);
+  const parts = [];
+  let weightedScore = 0;
+  let weightTotal = 0;
+
+  for (const part of PART_REGIONS) {
+    const referenceSignature = computeRegionSignature(refData, maskInfo, bounds, part.region);
+    const targetSignature = computeRegionSignature(targetData, maskInfo, bounds, part.region);
+    const score = focusedColorScore(referenceSignature, targetSignature, part.categories);
+
+    if (score === null) {
+      continue;
+    }
+
+    parts.push({
+      key: part.key,
+      label: part.label,
+      score: Math.round(score * 10) / 10
+    });
+    weightedScore += score * part.weight;
+    weightTotal += part.weight;
+  }
+
+  if (weightTotal === 0) {
+    return { score: 50, parts: [] };
+  }
+
+  return {
+    score: Math.round((weightedScore / weightTotal) * 10) / 10,
+    parts
+  };
+}
+
+function categoryMatches(data, index, category) {
+  return classifySignatureColor(data[index], data[index + 1], data[index + 2], data[index + 3]) === category;
+}
+
+function computeCategoryBox(data, maskInfo, bounds, region, category) {
+  const rect = resolveRegion(bounds, region);
+  let minX = RESIZE;
+  let minY = RESIZE;
+  let maxX = 0;
+  let maxY = 0;
+  let count = 0;
+
+  for (let y = Math.max(0, rect.minY); y <= Math.min(RESIZE - 1, rect.maxY); y += 1) {
+    for (let x = Math.max(0, rect.minX); x <= Math.min(RESIZE - 1, rect.maxX); x += 1) {
+      const pixelIndex = y * RESIZE + x;
+      if (maskInfo.mask[pixelIndex] !== 1) {
+        continue;
+      }
+
+      const dataIndex = pixelIndex * 4;
+      if (!categoryMatches(data, dataIndex, category)) {
+        continue;
+      }
+
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+      count += 1;
+    }
+  }
+
+  return count === 0 ? null : { minX, minY, maxX, maxY, count };
+}
+
+function boxSimilarity(referenceBox, targetBox) {
+  if (!referenceBox || !targetBox) {
+    return 0;
+  }
+
+  const refWidth = referenceBox.maxX - referenceBox.minX + 1;
+  const refHeight = referenceBox.maxY - referenceBox.minY + 1;
+  const targetWidth = targetBox.maxX - targetBox.minX + 1;
+  const targetHeight = targetBox.maxY - targetBox.minY + 1;
+  const refCenterX = (referenceBox.minX + referenceBox.maxX) / 2;
+  const refCenterY = (referenceBox.minY + referenceBox.maxY) / 2;
+  const targetCenterX = (targetBox.minX + targetBox.maxX) / 2;
+  const targetCenterY = (targetBox.minY + targetBox.maxY) / 2;
+  const refAspect = refWidth / Math.max(1, refHeight);
+  const targetAspect = targetWidth / Math.max(1, targetHeight);
+  const widthScore = 1 - Math.min(1, Math.abs(refWidth - targetWidth) / Math.max(refWidth, targetWidth, 1));
+  const heightScore = 1 - Math.min(1, Math.abs(refHeight - targetHeight) / Math.max(refHeight, targetHeight, 1));
+  const centerDistance = Math.hypot(refCenterX - targetCenterX, refCenterY - targetCenterY);
+  const centerScore = 1 - Math.min(1, centerDistance / 36);
+  const aspectScore = 1 - Math.min(1, Math.abs(refAspect - targetAspect) / Math.max(refAspect, targetAspect, 0.1));
+
+  return clamp((widthScore * 0.25 + heightScore * 0.25 + centerScore * 0.25 + aspectScore * 0.25) * 100, 0, 100);
+}
+
+function computeBagDetail(refData, targetData, maskInfo) {
+  const bounds = getMaskBounds(maskInfo);
+  const bagRegion = { x1: 0.14, y1: 0.36, x2: 0.86, y2: 0.8 };
+  const referenceSignature = computeRegionSignature(refData, maskInfo, bounds, bagRegion);
+  const targetSignature = computeRegionSignature(targetData, maskInfo, bounds, bagRegion);
+  const referenceGreen = referenceSignature.ratios.green;
+  const targetGreen = targetSignature.ratios.green;
+
+  if (referenceGreen < 0.018) {
+    return { score: 70, presenceScore: 70, shapeScore: 70 };
+  }
+
+  const presenceScore =
+    (1 - Math.min(1, Math.abs(referenceGreen - targetGreen) / Math.max(0.08, referenceGreen + 0.04))) * 100;
+  const referenceBox = computeCategoryBox(refData, maskInfo, bounds, bagRegion, "green");
+  const targetBox = computeCategoryBox(targetData, maskInfo, bounds, bagRegion, "green");
+  const shapeScore = boxSimilarity(referenceBox, targetBox);
+
+  return {
+    score: Math.round((presenceScore * 0.55 + shapeScore * 0.45) * 10) / 10,
+    presenceScore: Math.round(presenceScore * 10) / 10,
+    shapeScore: Math.round(shapeScore * 10) / 10
+  };
+}
+
+function computeNonWhiteFeatureBox(data, maskInfo) {
+  let minX = RESIZE;
+  let minY = RESIZE;
+  let maxX = 0;
+  let maxY = 0;
+  let count = 0;
+
+  for (let y = 0; y < RESIZE; y += 1) {
+    for (let x = 0; x < RESIZE; x += 1) {
+      const pixelIndex = y * RESIZE + x;
+      if (maskInfo.mask[pixelIndex] !== 1) {
+        continue;
+      }
+
+      const dataIndex = pixelIndex * 4;
+      const category = classifySignatureColor(
+        data[dataIndex],
+        data[dataIndex + 1],
+        data[dataIndex + 2],
+        data[dataIndex + 3]
+      );
+
+      if (category === "none" || category === "white" || category === "other") {
+        continue;
+      }
+
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+      count += 1;
+    }
+  }
+
+  return count === 0 ? null : { minX, minY, maxX, maxY, count };
+}
+
+function computeProportionDetail(refData, targetData, maskInfo) {
+  const score = boxSimilarity(
+    computeNonWhiteFeatureBox(refData, maskInfo),
+    computeNonWhiteFeatureBox(targetData, maskInfo)
+  );
+
+  return {
+    score: Math.round(score * 10) / 10
+  };
+}
+
 function buildSimilarityDetailFromData(refData, targetData, maskInfo, referenceSignature) {
-  const color = computeColorSimilarity(refData, targetData, maskInfo);
+  const globalColor = computeColorSimilarity(refData, targetData, maskInfo);
   const shape = computeShapeSimilarity(refData, targetData, maskInfo);
   const signature = computeSignatureSimilarity(
     referenceSignature,
     computeColorSignature(targetData, maskInfo)
   );
-  const baseScore = (color * 0.55 + shape * 0.45) * 100;
   const signatureScore = signature * 100;
-  const score = baseScore * 0.72 + signatureScore * 0.28;
+  const partColor = computePartColorDetail(refData, targetData, maskInfo);
+  const bag = computeBagDetail(refData, targetData, maskInfo);
+  const proportion = computeProportionDetail(refData, targetData, maskInfo);
+  const featureScore = bag.score * 0.62 + proportion.score * 0.38;
+  const score =
+    shape * 100 * 0.35 +
+    partColor.score * 0.3 +
+    featureScore * 0.25 +
+    signatureScore * 0.1;
 
   return {
     score: Math.round(clamp(score, 0, 100) * 10) / 10,
-    colorScore: Math.round(color * 1000) / 10,
+    colorScore: partColor.score,
+    globalColorScore: Math.round(globalColor * 1000) / 10,
     shapeScore: Math.round(shape * 1000) / 10,
-    signatureScore: Math.round(signatureScore * 10) / 10
+    signatureScore: Math.round(signatureScore * 10) / 10,
+    featureScore: Math.round(featureScore * 10) / 10,
+    bagScore: bag.score,
+    proportionScore: proportion.score,
+    partScores: partColor.parts
   };
 }
 
@@ -429,9 +773,17 @@ function buildReason(detail, poseCount) {
   const deductions = [];
 
   if (detail.colorScore >= 72) {
-    strengths.push("기준 캐릭터의 검정/흰색 배치와 초록 포인트 색감");
+    strengths.push("머리, 눈, 부리, 볼, 팔, 발 등 부위별 색 배치");
   } else {
-    deductions.push("색감과 명암 분포");
+    const weakParts = (detail.partScores ?? [])
+      .filter((part) => part.score < 62)
+      .slice(0, 3)
+      .map((part) => part.label);
+    deductions.push(
+      weakParts.length > 0
+        ? `${weakParts.join(", ")}의 색 배치`
+        : "부위별 색 배치"
+    );
   }
 
   if (detail.shapeScore >= 72) {
@@ -440,10 +792,10 @@ function buildReason(detail, poseCount) {
     deductions.push("몸통 비율과 포즈 윤곽");
   }
 
-  if (detail.signatureScore >= 72) {
-    strengths.push("캐릭터 고유 색 조합");
+  if (detail.featureScore >= 72) {
+    strengths.push("가방 유무·형태와 전체 프로포션");
   } else {
-    deductions.push("캐릭터 고유 색 조합");
+    deductions.push("가방 형태, 초록 가방 위치, 전체 프로포션");
   }
 
   const strengthText =
