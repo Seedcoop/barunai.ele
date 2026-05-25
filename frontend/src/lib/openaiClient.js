@@ -1,12 +1,10 @@
-﻿const OPENAI_BASE_URL =
-  import.meta.env.VITE_OPENAI_BASE_URL ?? "https://api.openai.com/v1";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
-async function callOpenAI(endpoint, apiKey, payload) {
-  const response = await fetch(`${OPENAI_BASE_URL}${endpoint}`, {
+async function callBackend(endpoint, payload) {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`
+      "Content-Type": "application/json"
     },
     body: JSON.stringify(payload)
   });
@@ -15,33 +13,31 @@ async function callOpenAI(endpoint, apiKey, payload) {
 
   if (!response.ok) {
     const message =
-      data?.error?.message ?? "OpenAI API 요청 중 오류가 발생했습니다.";
+      data?.error?.message ??
+      data?.message ??
+      "OpenAI API 요청 중 오류가 발생했습니다.";
     throw new Error(message);
   }
 
   return data;
 }
 
-export async function moderatePrompt(apiKey, prompt) {
-  const data = await callOpenAI("/moderations", apiKey, {
-    model: "omni-moderation-latest",
+export async function moderatePrompt(prompt) {
+  const data = await callBackend("/moderations", {
     input: prompt
   });
 
   return data?.results?.[0] ?? null;
 }
 
-export async function generateImage(apiKey, prompt, options) {
-  const payload = {
-    model: "gpt-image-1",
+export async function generateImage(prompt, options) {
+  const data = await callBackend("/images/generations", {
     prompt,
     size: options.size,
     quality: options.quality,
-    output_format: "png",
-    background: options.transparent ? "transparent" : "opaque"
-  };
+    transparent: options.transparent
+  });
 
-  const data = await callOpenAI("/images/generations", apiKey, payload);
   const base64Image = data?.data?.[0]?.b64_json;
 
   if (!base64Image) {

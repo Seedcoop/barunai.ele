@@ -1,10 +1,8 @@
 ﻿export default function PromptInput({
-  apiKey,
   prompt,
   size,
   quality,
   transparent,
-  onApiKeyChange,
   onPromptChange,
   onSizeChange,
   onQualityChange,
@@ -13,16 +11,6 @@
   return (
     <section className="card prompt-card">
       <h3>프롬프트 작성</h3>
-
-      <label htmlFor="api-key">OpenAI API Key</label>
-      <input
-        id="api-key"
-        type="password"
-        value={apiKey}
-        onChange={(event) => onApiKeyChange(event.target.value)}
-        placeholder="sk-..."
-        autoComplete="off"
-      />
 
       <label htmlFor="prompt">캐릭터 설명</label>
       <textarea

@@ -50,7 +50,6 @@ export default function App() {
   const [gatewayPassword, setGatewayPassword] = useState("");
   const [gatewayError, setGatewayError] = useState("");
 
-  const [apiKey, setApiKey] = useState("");
   const [prompt, setPrompt] = useState("");
   const [size, setSize] = useState("1024x1024");
   const [quality, setQuality] = useState("medium");
@@ -78,7 +77,7 @@ export default function App() {
     );
   }, [selectedReferenceId, customReference]);
 
-  const canGenerate = apiKey.trim().length > 0 && prompt.trim().length > 0;
+  const canGenerate = prompt.trim().length > 0;
 
   const handleGatewaySubmit = (event) => {
     event.preventDefault();
@@ -126,7 +125,7 @@ export default function App() {
 
   const handleGenerate = async () => {
     if (!canGenerate) {
-      setError("API Key와 프롬프트를 모두 입력해 주세요.");
+      setError("프롬프트를 입력해 주세요.");
       return;
     }
 
@@ -146,7 +145,7 @@ export default function App() {
       }
 
       setStatus("2/4 OpenAI 모더레이션 검사 중...");
-      const moderation = await moderatePrompt(apiKey.trim(), prompt.trim());
+      const moderation = await moderatePrompt(prompt.trim());
       const moderationCheck = runModerationSafetyCheck(moderation);
       if (!moderationCheck.allowed) {
         setStatus(moderationCheck.reason);
@@ -157,7 +156,7 @@ export default function App() {
       setStatus("3/4 이미지 생성 중...");
       const safePrompt = `${SAFETY_PROMPT_PREFIX} 사용자 요청: ${prompt.trim()}`;
       setFinalPrompt(safePrompt);
-      const result = await generateImage(apiKey.trim(), safePrompt, {
+      const result = await generateImage(safePrompt, {
         size,
         quality,
         transparent
@@ -195,12 +194,10 @@ export default function App() {
       <main className="content-grid">
         <section className="left-panel">
           <PromptInput
-            apiKey={apiKey}
             prompt={prompt}
             size={size}
             quality={quality}
             transparent={transparent}
-            onApiKeyChange={setApiKey}
             onPromptChange={setPrompt}
             onSizeChange={setSize}
             onQualityChange={setQuality}
