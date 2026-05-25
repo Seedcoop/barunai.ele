@@ -117,7 +117,6 @@ export function runModerationSafetyCheck(moderationResult) {
 
 export const SAFETY_PROMPT_PREFIX = [
   "아래 조건을 반드시 지켜 초등 고학년 교육용 캐릭터 이미지를 만들어라.",
-  "밝고 건강하고 학습 친화적인 장면으로 표현한다.",
   "선정성, 신체 노출, 폭력, 공포, 혐오, 범죄, 약물, 무기, 욕설, 비윤리적 행동은 포함하지 않는다.",
   "실제 인물보다는 귀여운 3D 캐릭터 스타일로 만든다.",
   "배경은 깔끔하고 명확하게 구성한다."
