@@ -1,0 +1,6 @@
+openai-api-key.txt
+.env
+.env.*
+frontend/node_modules/
+frontend/dist/
+__reference_pearl_image/

@@ -1,0 +1,1465 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>바른AI: 생성형 AI 이미지 체험</title>
+  <style>
+    :root {
+      --bg-main: #d8ebfa;
+      --bg-deep: #083d8f;
+      --blue: #0f4ea6;
+      --green: #47b13f;
+      --card: #ffffff;
+      --line: #c6d8ea;
+      --text: #1b3553;
+      --muted: #5a7391;
+      --danger: #b73737;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at 15% 0%, #e8f4ff, var(--bg-main));
+    }
+
+    .page {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    .is-locked .page {
+      display: none;
+    }
+
+    .lock-screen {
+      min-height: 100vh;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      background: linear-gradient(145deg, #d8ebfa 0%, #f2fbff 48%, #e9f8e4 100%);
+    }
+
+    .is-locked .lock-screen {
+      display: grid;
+    }
+
+    .lock-panel {
+      width: min(100%, 420px);
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 18px 34px rgba(8, 61, 143, 0.18);
+      padding: 24px;
+    }
+
+    .lock-badge {
+      display: inline-block;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: #e6f3ff;
+      color: var(--blue);
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .lock-panel h1 {
+      margin: 14px 0 8px;
+      color: var(--blue);
+      font-size: 32px;
+    }
+
+    .lock-panel p {
+      margin: 0 0 12px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .lock-error {
+      display: none;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #ffe8e8;
+      color: var(--danger);
+      font-weight: 700;
+    }
+
+    .lock-submit {
+      width: 100%;
+      margin-top: 14px;
+      border: 0;
+      border-radius: 14px;
+      padding: 13px;
+      color: #ffffff;
+      background: linear-gradient(140deg, #0f4ea6, #1f6bd1 55%, #40b531);
+      cursor: pointer;
+      font-size: 17px;
+      font-weight: 800;
+      box-shadow: 0 12px 18px rgba(8, 61, 143, 0.18);
+    }
+
+    .hero {
+      background: linear-gradient(120deg, var(--bg-deep), #1165c5 55%, #38ad46);
+      border-radius: 24px;
+      padding: 22px;
+      color: #fff;
+      box-shadow: 0 16px 32px rgba(8, 61, 143, 0.25);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 240px;
+      height: 240px;
+      right: -66px;
+      top: -60px;
+      border-radius: 50%;
+      background: rgba(165, 241, 163, 0.26);
+    }
+
+    .hero-badge {
+      display: inline-block;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.4);
+      background: rgba(255,255,255,0.18);
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(24px, 3vw, 36px);
+      letter-spacing: -0.3px;
+    }
+
+    .hero p {
+      margin: 10px 0 0;
+      line-height: 1.6;
+      max-width: 920px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1.12fr 1fr;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .column {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      box-shadow: 0 8px 14px rgba(15, 78, 166, 0.08);
+    }
+
+    .card h2 {
+      margin: 0 0 10px;
+      color: var(--blue);
+      font-size: 22px;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin: 10px 0 6px;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #f7fbff;
+      padding: 11px 12px;
+      color: var(--text);
+      font-size: 15px;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: 2px solid #6ea9f4;
+      border-color: #6ea9f4;
+    }
+
+    .grid-two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .checkbox-row input {
+      width: 18px;
+      height: 18px;
+    }
+
+    .help {
+      margin: 8px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .ref-single {
+      border: 2px solid var(--green);
+      border-radius: 12px;
+      padding: 6px;
+      background: #f3f9ff;
+      box-shadow: 0 0 0 3px rgba(71, 177, 63, 0.18);
+    }
+
+    .ref-single img {
+      width: 100%;
+      max-height: 330px;
+      object-fit: contain;
+      border-radius: 10px;
+      background: #e6effb;
+      display: block;
+    }
+
+    .ref-single strong {
+      display: block;
+      margin-top: 8px;
+      color: var(--blue);
+    }
+
+    .safety ul {
+      margin: 0;
+      padding-left: 18px;
+      line-height: 1.6;
+    }
+
+    .generate {
+      border: 0;
+      border-radius: 13px;
+      width: 100%;
+      padding: 14px;
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+      background: linear-gradient(130deg, #0f4ea6, #2e75d2 55%, #47b13f);
+      cursor: pointer;
+      box-shadow: 0 12px 18px rgba(15, 78, 166, 0.24);
+    }
+
+    .generate:disabled {
+      cursor: not-allowed;
+      opacity: 0.58;
+      box-shadow: none;
+    }
+
+    .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 13px;
+      font-weight: 800;
+      background: #eef4fb;
+      color: #567399;
+    }
+
+    .badge.low { background: #ffe8e8; color: #9f2727; }
+    .badge.mid { background: #fff4df; color: #965f12; }
+    .badge.high { background: #e4f8df; color: #277623; }
+
+    .status {
+      margin: 8px 0 0;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #edf5ff;
+      color: var(--blue);
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .error {
+      margin-top: 8px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #ffe9e9;
+      color: var(--danger);
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .moderation {
+      margin-top: 8px;
+      padding: 10px 12px;
+      border: 1px solid #f0d4a4;
+      border-radius: 10px;
+      background: #fff8eb;
+      color: #7a5619;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .result-empty {
+      margin-top: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      min-height: 260px;
+      display: grid;
+      place-items: center;
+      color: #5e7796;
+      background: repeating-linear-gradient(
+        45deg,
+        #eff6fd,
+        #eff6fd 12px,
+        #e7f0fa 12px,
+        #e7f0fa 24px
+      );
+      text-align: center;
+      padding: 16px;
+      line-height: 1.5;
+      font-weight: 700;
+    }
+
+    .result-wrap {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #f4f9ff;
+    }
+
+    .result-wrap img {
+      display: block;
+      width: 100%;
+      max-height: 620px;
+      object-fit: contain;
+    }
+
+    .prompt-log {
+      margin-top: 10px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fbfdff;
+      padding: 10px;
+      font-size: 14px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.55;
+    }
+
+    .similarity-reason {
+      margin-top: 10px;
+      border: 1px solid #d7e4f3;
+      border-radius: 12px;
+      background: #f7fbff;
+      padding: 10px;
+      font-size: 14px;
+      color: #315277;
+      line-height: 1.55;
+    }
+
+    .download {
+      display: inline-block;
+      margin-top: 10px;
+      text-decoration: none;
+      color: #fff;
+      background: #2f72cb;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-weight: 700;
+    }
+
+    @media (max-width: 1080px) {
+      .layout { grid-template-columns: 1fr; }
+      .result-wrap img { max-height: 480px; }
+    }
+
+    @media (max-width: 640px) {
+      .page { padding: 12px; }
+      .grid-two { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body class="is-locked">
+  <main class="lock-screen">
+    <form id="lockForm" class="lock-panel">
+      <div class="lock-badge">Kyobo AI Studio</div>
+      <h1>접속 비밀번호</h1>
+      <p>수업용 페이지입니다. 비밀번호를 입력하면 웹앱이 열립니다.</p>
+
+      <label for="lockPassword">비밀번호</label>
+      <input id="lockPassword" type="password" autocomplete="current-password" autofocus />
+      <div id="lockError" class="lock-error">비밀번호가 맞지 않습니다.</div>
+
+      <button class="lock-submit" type="submit">열기</button>
+    </form>
+  </main>
+
+  <div class="page">
+    <header class="hero">
+      <div class="hero-badge">01. AI 이해하기</div>
+      <h1>바른AI: 생성형 AI 이미지 체험</h1>
+      <p>
+        안전한 프롬프트로 캐릭터를 생성하고, 기준 이미지와의 유사도를 %로 확인하는 교육용 실습 페이지입니다.
+      </p>
+    </header>
+
+    <main class="layout">
+      <section class="column">
+        <article class="card">
+          <h2>프롬프트 작성</h2>
+
+          <label for="prompt">캐릭터 설명</label>
+          <textarea id="prompt" placeholder="예: 초록색 콩 모양 가방을 멘 귀여운 펭귄이 손을 흔들며 웃고 있는 장면"></textarea>
+
+          <div class="grid-two">
+            <div>
+              <label for="size">이미지 크기</label>
+              <select id="size">
+                <option value="1024x1024">1024 x 1024</option>
+                <option value="1536x1024">1536 x 1024 (가로)</option>
+                <option value="1024x1536">1024 x 1536 (세로)</option>
+              </select>
+            </div>
+            <div>
+              <label for="quality">품질</label>
+              <select id="quality">
+                <option value="low">low</option>
+                <option value="medium" selected>medium</option>
+                <option value="high">high</option>
+              </select>
+            </div>
+          </div>
+
+          <label class="checkbox-row" for="transparent">
+            <input id="transparent" type="checkbox" />
+            투명 배경으로 생성
+          </label>
+        </article>
+
+        <article class="card safety">
+          <h2>교육용 안전 규칙</h2>
+          <ul>
+            <li>선정성, 폭력성, 혐오, 범죄, 자해/약물 관련 내용은 자동 차단됩니다.</li>
+            <li>초등 고학년 학습자에게 적절한 밝고 건강한 장면으로 작성해 주세요.</li>
+            <li>무기, 피, 공포, 협박 표현을 프롬프트에 포함하지 마세요.</li>
+            <li>존중과 배려가 담긴 문장으로 프롬프트를 개선해 보세요.</li>
+          </ul>
+        </article>
+
+        <button id="generateButton" class="generate">안전 검사 후 이미지 생성</button>
+      </section>
+
+      <section class="column">
+        <article class="card">
+          <h2>기준 이미지</h2>
+          <div class="ref-single">
+            <img id="visibleReferencePreview" alt="기준 이미지 기본 캐릭터" />
+            <strong>기본 캐릭터</strong>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="title-row">
+            <h2>생성 결과</h2>
+            <span id="similarityBadge" class="badge">유사도 계산 전</span>
+          </div>
+
+          <div id="status" class="status">준비 완료: 프롬프트를 입력해 주세요.</div>
+          <div id="error" class="error" style="display:none;"></div>
+          <div id="moderation" class="moderation" style="display:none;"></div>
+
+          <div id="resultEmpty" class="result-empty">
+            생성된 이미지와 유사도 점수가 여기 표시됩니다.
+          </div>
+
+          <div id="resultWrap" class="result-wrap" style="display:none;">
+            <img id="resultImage" alt="생성된 이미지" />
+          </div>
+
+          <div id="similarityReason" class="similarity-reason" style="display:none;"></div>
+          <a id="downloadLink" class="download" style="display:none;" download="edu-character.png">이미지 다운로드</a>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const API_BASE_URL = "/api";
+    const GATEWAY_PASSWORD = "KYOBO26";
+    const GATEWAY_STORAGE_KEY = "kyobo-elementary-unlocked";
+    const lockEl = {
+      form: document.getElementById("lockForm"),
+      password: document.getElementById("lockPassword"),
+      error: document.getElementById("lockError")
+    };
+
+    function unlockPage() {
+      document.body.classList.remove("is-locked");
+      lockEl.password.value = "";
+      lockEl.error.style.display = "none";
+    }
+
+    function initializeGateway() {
+      try {
+        if (window.localStorage.getItem(GATEWAY_STORAGE_KEY) === "true") {
+          unlockPage();
+        }
+      } catch {
+        // Storage may be unavailable in private browsing; form unlock still works.
+      }
+
+      lockEl.form.addEventListener("submit", (event) => {
+        event.preventDefault();
+
+        if (lockEl.password.value.trim() !== GATEWAY_PASSWORD) {
+          lockEl.error.style.display = "block";
+          lockEl.password.focus();
+          return;
+        }
+
+        try {
+          window.localStorage.setItem(GATEWAY_STORAGE_KEY, "true");
+        } catch {
+          // Unlock for this page view even if storage is blocked.
+        }
+        unlockPage();
+      });
+    }
+
+    const blockedKeywords = [
+      "살인", "죽여", "피", "총", "칼부림", "테러", "폭탄", "자해", "자살", "마약", "담배", "술", "도박",
+      "음란", "야한", "노출", "성행위", "혐오", "괴롭힘", "협박",
+      "kill", "blood", "gun", "knife", "bomb", "terror", "suicide", "self-harm", "drug", "alcohol", "gambling",
+      "nude", "nudity", "sexual", "porn", "gore", "violent"
+    ];
+    const blockedDirectAnswerNames = ["꼬옥", "꼬옥이"];
+
+    const moderationBlockCategories = [
+      "sexual", "sexual/minors", "violence", "violence/graphic", "self-harm", "self-harm/intent", "self-harm/instructions",
+      "hate", "hate/threatening", "harassment/threatening", "illicit", "illicit/violent"
+    ];
+
+    const categoryLabel = {
+      "sexual": "성적 콘텐츠",
+      "sexual/minors": "아동 성적 콘텐츠",
+      "violence": "폭력",
+      "violence/graphic": "잔혹 폭력",
+      "self-harm": "자해",
+      "self-harm/intent": "자해 의도",
+      "self-harm/instructions": "자해 지시",
+      "hate": "혐오",
+      "hate/threatening": "혐오/위협",
+      "harassment/threatening": "괴롭힘/위협",
+      "illicit": "불법 행위",
+      "illicit/violent": "폭력적 불법 행위"
+    };
+
+    const safetyPromptPrefix = [
+      "아래 조건을 반드시 지켜 초등 고학년 교육용 캐릭터 이미지를 만들어라.",
+      "밝고 건강하고 학습 친화적인 장면으로 표현한다.",
+      "선정성, 신체 노출, 폭력, 공포, 혐오, 범죄, 약물, 무기, 욕설, 비윤리적 행동은 포함하지 않는다.",
+      "실제 인물보다는 귀여운 3D 캐릭터 스타일로 만든다.",
+      "배경은 깔끔하고 명확하게 구성한다."
+    ].join(" ");
+
+    const references = {
+      defaultCandidates: ["./기준이미지_기본캐릭터.png", "./frontend/public/assets/reference-default.png"],
+      turnaroundCandidates: ["./기준이미지_턴어라운드.png", "./frontend/public/assets/reference-turnaround.png"]
+    };
+
+    const state = {
+      defaultSrc: "",
+      turnaroundSrc: "",
+      turnaroundPoseSources: [],
+      generatedImage: "",
+      similarity: null,
+      finalPrompt: ""
+    };
+
+    const el = {
+      prompt: document.getElementById("prompt"),
+      size: document.getElementById("size"),
+      quality: document.getElementById("quality"),
+      transparent: document.getElementById("transparent"),
+      visibleReferencePreview: document.getElementById("visibleReferencePreview"),
+      generateButton: document.getElementById("generateButton"),
+      status: document.getElementById("status"),
+      error: document.getElementById("error"),
+      moderation: document.getElementById("moderation"),
+      similarityBadge: document.getElementById("similarityBadge"),
+      resultEmpty: document.getElementById("resultEmpty"),
+      resultWrap: document.getElementById("resultWrap"),
+      resultImage: document.getElementById("resultImage"),
+      similarityReason: document.getElementById("similarityReason"),
+      downloadLink: document.getElementById("downloadLink")
+    };
+
+    function setStatus(message) {
+      el.status.textContent = message;
+    }
+
+    function setError(message) {
+      if (!message) {
+        el.error.style.display = "none";
+        el.error.textContent = "";
+        return;
+      }
+      el.error.style.display = "block";
+      el.error.textContent = message;
+    }
+
+    function setModerationDetails(details) {
+      if (!details || details.length === 0) {
+        el.moderation.style.display = "none";
+        el.moderation.textContent = "";
+        return;
+      }
+
+      el.moderation.style.display = "block";
+      el.moderation.innerHTML = "<strong>차단된 위험 유형:</strong> " + details.join(", ");
+    }
+
+    function setSimilarityBadge(similarity) {
+      if (similarity === null || Number.isNaN(similarity)) {
+        el.similarityBadge.className = "badge";
+        el.similarityBadge.textContent = "유사도 계산 전";
+        return;
+      }
+
+      let levelClass = "low";
+      if (similarity >= 80) levelClass = "high";
+      else if (similarity >= 60) levelClass = "mid";
+
+      el.similarityBadge.className = `badge ${levelClass}`;
+      el.similarityBadge.textContent = `유사도 ${similarity.toFixed(1)}%`;
+    }
+
+    function setSimilarityReason(text) {
+      if (!text) {
+        el.similarityReason.style.display = "none";
+        el.similarityReason.textContent = "";
+        return;
+      }
+      el.similarityReason.style.display = "block";
+      el.similarityReason.textContent = text;
+    }
+
+    function showGeneratedImage(imageUrl) {
+      el.resultEmpty.style.display = "none";
+      el.resultWrap.style.display = "block";
+      el.resultImage.src = imageUrl;
+
+      el.downloadLink.style.display = "inline-block";
+      el.downloadLink.href = imageUrl;
+      el.downloadLink.download = `edu-character-${Date.now()}.png`;
+    }
+
+    function clearGeneratedImage() {
+      el.resultWrap.style.display = "none";
+      el.resultImage.removeAttribute("src");
+      el.resultEmpty.style.display = "grid";
+      setSimilarityReason("");
+      el.downloadLink.style.display = "none";
+      el.downloadLink.removeAttribute("href");
+    }
+
+    function normalize(text) {
+      return text.toLowerCase().replace(/\s+/g, " ").trim();
+    }
+
+    function normalizeForBypassCheck(text) {
+      return text.toLowerCase().replace(/[^a-z0-9가-힣]/g, "");
+    }
+
+    function runLocalPromptSafetyCheck(prompt) {
+      const normalized = normalize(prompt);
+      const compact = normalizeForBypassCheck(prompt);
+      const matched = blockedKeywords.filter((keyword) => normalized.includes(keyword.toLowerCase()));
+      const answerBypassMatched = blockedDirectAnswerNames.filter((name) =>
+        compact.includes(normalizeForBypassCheck(name))
+      );
+
+      if (answerBypassMatched.length > 0) {
+        return {
+          allowed: false,
+          reason: "게임 활동 규칙상 캐릭터의 직접 이름(정답어)은 사용할 수 없습니다. 묘사형 프롬프트로 다시 작성해 주세요.",
+          details: []
+        };
+      }
+
+      if (matched.length > 0) {
+        return {
+          allowed: false,
+          reason: "교육용 안전 규칙에 맞지 않는 단어가 포함되어 있어 생성할 수 없습니다.",
+          details: matched.slice(0, 8)
+        };
+      }
+
+      return { allowed: true, reason: "통과", details: [] };
+    }
+
+    function runModerationSafetyCheck(moderationResult) {
+      const categories = (moderationResult && moderationResult.categories) || {};
+      const blocked = moderationBlockCategories.filter((name) => categories[name]);
+
+      if (blocked.length > 0) {
+        return {
+          allowed: false,
+          reason: "모더레이션 검사에서 교육용으로 부적절한 요소가 감지되어 차단되었습니다.",
+          details: blocked.map((name) => categoryLabel[name] || name)
+        };
+      }
+
+      if (moderationResult && moderationResult.flagged) {
+        return {
+          allowed: false,
+          reason: "모더레이션 검사에서 잠재 위험이 감지되어 차단되었습니다.",
+          details: ["잠재적 위험"]
+        };
+      }
+
+      return { allowed: true, reason: "통과", details: [] };
+    }
+
+    async function callOpenAI(endpoint, payload) {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        const message =
+          (data && data.error && data.error.message) ||
+          (data && data.message) ||
+          "요청 처리 실패";
+        throw new Error(message);
+      }
+
+      return data;
+    }
+
+    async function moderatePrompt(prompt) {
+      const data = await callOpenAI("/moderations", {
+        model: "omni-moderation-latest",
+        input: prompt
+      });
+
+      return (data && data.results && data.results[0]) || null;
+    }
+
+    async function generateImage(prompt, options) {
+      const data = await callOpenAI("/images/generations", {
+        model: "gpt-image-1",
+        prompt,
+        size: options.size,
+        quality: options.quality,
+        output_format: "png",
+        background: options.transparent ? "transparent" : "opaque"
+      });
+
+      const b64 = data && data.data && data.data[0] && data.data[0].b64_json;
+      if (!b64) {
+        throw new Error("이미지 결과를 받지 못했습니다.");
+      }
+
+      return `data:image/png;base64,${b64}`;
+    }
+
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error(`이미지를 불러오지 못했습니다: ${src}`));
+        image.src = src;
+      });
+    }
+
+    async function findFirstLoadableSource(candidates) {
+      for (const source of candidates) {
+        try {
+          await loadImage(source);
+          return source;
+        } catch (error) {
+          continue;
+        }
+      }
+      return "";
+    }
+
+    function getImageData(image, resize = 128) {
+      const canvas = document.createElement("canvas");
+      canvas.width = resize;
+      canvas.height = resize;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+      const scale = Math.min(resize / image.width, resize / image.height);
+      const drawWidth = image.width * scale;
+      const drawHeight = image.height * scale;
+      const offsetX = (resize - drawWidth) / 2;
+      const offsetY = (resize - drawHeight) / 2;
+
+      ctx.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
+      return ctx.getImageData(0, 0, resize, resize).data;
+    }
+
+    function getImageDataWithTransform(
+      image,
+      resize = 128,
+      scaleFactor = 1,
+      shiftX = 0,
+      shiftY = 0,
+      rotationDeg = 0
+    ) {
+      const canvas = document.createElement("canvas");
+      canvas.width = resize;
+      canvas.height = resize;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+      const baseScale = Math.min(resize / image.width, resize / image.height);
+      const scale = baseScale * scaleFactor;
+      const drawWidth = image.width * scale;
+      const drawHeight = image.height * scale;
+      const centerX = resize / 2 + shiftX;
+      const centerY = resize / 2 + shiftY;
+      const angleRad = (rotationDeg * Math.PI) / 180;
+
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate(angleRad);
+      ctx.drawImage(image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+      ctx.restore();
+      return ctx.getImageData(0, 0, resize, resize).data;
+    }
+
+    function grayscaleAt(data, index) {
+      return data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114;
+    }
+
+    function rgbToHsv(r, g, b) {
+      const rn = r / 255;
+      const gn = g / 255;
+      const bn = b / 255;
+      const max = Math.max(rn, gn, bn);
+      const min = Math.min(rn, gn, bn);
+      const d = max - min;
+      let h = 0;
+
+      if (d !== 0) {
+        if (max === rn) h = ((gn - bn) / d) % 6;
+        else if (max === gn) h = (bn - rn) / d + 2;
+        else h = (rn - gn) / d + 4;
+        h *= 60;
+        if (h < 0) h += 360;
+      }
+
+      const s = max === 0 ? 0 : d / max;
+      const v = max;
+      return { h, s, v };
+    }
+
+    function classifySignatureColor(r, g, b, a) {
+      if (a < 14) return "none";
+      const { h, s, v } = rgbToHsv(r, g, b);
+
+      if (v < 0.2) return "black";
+      if (s < 0.2 && v > 0.72) return "white";
+      if (h >= 70 && h <= 170 && s >= 0.2 && v >= 0.15) return "green";
+      if (h >= 18 && h <= 70 && s >= 0.25 && v >= 0.22) return "yellowOrange";
+      if ((h <= 15 || h >= 345) && s >= 0.25 && v >= 0.22) return "red";
+      return "other";
+    }
+
+    function computeColorSignature(data, maskInfo) {
+      const counts = {
+        black: 0,
+        white: 0,
+        green: 0,
+        yellowOrange: 0,
+        red: 0,
+        other: 0
+      };
+      const mask = maskInfo.mask;
+      let valid = 0;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const pixelIndex = i / 4;
+        if (mask[pixelIndex] !== 1) continue;
+        const category = classifySignatureColor(
+          data[i],
+          data[i + 1],
+          data[i + 2],
+          data[i + 3]
+        );
+        if (category === "none") continue;
+        counts[category] += 1;
+        valid += 1;
+      }
+
+      if (valid === 0) {
+        return {
+          ratios: {
+            black: 0,
+            white: 0,
+            green: 0,
+            yellowOrange: 0,
+            red: 0,
+            other: 1
+          },
+          validPixels: 0
+        };
+      }
+
+      return {
+        ratios: {
+          black: counts.black / valid,
+          white: counts.white / valid,
+          green: counts.green / valid,
+          yellowOrange: counts.yellowOrange / valid,
+          red: counts.red / valid,
+          other: counts.other / valid
+        },
+        validPixels: valid
+      };
+    }
+
+    function computeSignatureSimilarity(referenceSignature, targetSignature) {
+      const ref = referenceSignature.ratios;
+      const tar = targetSignature.ratios;
+      const keys = ["black", "white", "green", "yellowOrange"];
+      let weightedSum = 0;
+      let weightTotal = 0;
+
+      for (const key of keys) {
+        const weight = ref[key] + 0.08;
+        const diff = Math.abs(tar[key] - ref[key]);
+        const closeness = 1 - Math.min(1, diff / Math.max(0.08, ref[key] + 0.08));
+        weightedSum += closeness * weight;
+        weightTotal += weight;
+      }
+
+      let score = weightTotal === 0 ? 0.5 : weightedSum / weightTotal;
+
+      // 레퍼런스보다 빨강 계열이 과도하면 강한 페널티(앵그리버드류 오탐 방지)
+      const redExcess = Math.max(0, tar.red - ref.red - 0.02);
+      const redPenalty = Math.min(1, redExcess / 0.22) * 0.55;
+
+      // 레퍼런스 대비 기타색 비중이 과하면 추가 페널티
+      const otherExcess = Math.max(0, tar.other - ref.other - 0.08);
+      const otherPenalty = Math.min(1, otherExcess / 0.35) * 0.25;
+
+      score = Math.max(0, Math.min(1, score - redPenalty - otherPenalty));
+      return score;
+    }
+
+    function buildReferenceMask(refData, alphaThreshold = 14) {
+      const pixelCount = refData.length / 4;
+      const mask = new Uint8Array(pixelCount);
+      let activeCount = 0;
+
+      for (let p = 0; p < pixelCount; p += 1) {
+        const alpha = refData[p * 4 + 3];
+        if (alpha > alphaThreshold) {
+          mask[p] = 1;
+          activeCount += 1;
+        }
+      }
+
+      // 기준 이미지가 불투명(JPG 등)인 경우 전체를 활성화해 기존 동작을 유지
+      if (activeCount === 0) {
+        mask.fill(1);
+        activeCount = pixelCount;
+      }
+
+      return { mask, activeCount, pixelCount };
+    }
+
+    function computeColorSimilarity(refData, targetData, maskInfo, resize = 128) {
+      let diff = 0;
+      let channelCount = 0;
+      const mask = maskInfo.mask;
+
+      for (let i = 0; i < refData.length; i += 4) {
+        const pixelIndex = i / 4;
+        if (mask[pixelIndex] !== 1) {
+          continue;
+        }
+        diff += Math.abs(refData[i] - targetData[i]);
+        diff += Math.abs(refData[i + 1] - targetData[i + 1]);
+        diff += Math.abs(refData[i + 2] - targetData[i + 2]);
+        channelCount += 3;
+      }
+
+      if (channelCount === 0) {
+        return 0.5;
+      }
+
+      const averageDiff = diff / channelCount;
+      return 1 - averageDiff / 255;
+    }
+
+    function computeShapeSimilarity(refData, targetData, maskInfo, resize = 128) {
+      let matched = 0;
+      let total = 0;
+      const mask = maskInfo.mask;
+
+      for (let y = 1; y < resize - 1; y += 1) {
+        for (let x = 1; x < resize - 1; x += 1) {
+          const pixelIndex = y * resize + x;
+          const rightPixelIndex = y * resize + x + 1;
+          const downPixelIndex = (y + 1) * resize + x;
+
+          // 기준 캐릭터 영역 내부 픽셀만 비교 (배경 영향 제거)
+          if (
+            mask[pixelIndex] !== 1 ||
+            mask[rightPixelIndex] !== 1 ||
+            mask[downPixelIndex] !== 1
+          ) {
+            continue;
+          }
+
+          const idx = (y * resize + x) * 4;
+          const right = (y * resize + x + 1) * 4;
+          const down = ((y + 1) * resize + x) * 4;
+
+          const refEdge =
+            Math.abs(grayscaleAt(refData, idx) - grayscaleAt(refData, right)) +
+            Math.abs(grayscaleAt(refData, idx) - grayscaleAt(refData, down));
+
+          const targetEdge =
+            Math.abs(grayscaleAt(targetData, idx) - grayscaleAt(targetData, right)) +
+            Math.abs(grayscaleAt(targetData, idx) - grayscaleAt(targetData, down));
+
+          if (refEdge > 20 || targetEdge > 20) {
+            total += 1;
+            if (Math.abs(refEdge - targetEdge) < 28) {
+              matched += 1;
+            }
+          }
+        }
+      }
+
+      return total === 0 ? 0.5 : matched / total;
+    }
+
+    function buildSimilarityDetailFromData(refData, targetData, maskInfo, referenceSignature) {
+      const color = computeColorSimilarity(refData, targetData, maskInfo);
+      const shape = computeShapeSimilarity(refData, targetData, maskInfo);
+      const baseScore = Math.max(0, Math.min(100, (color * 0.55 + shape * 0.45) * 100));
+      const targetSignature = computeColorSignature(targetData, maskInfo);
+      const signature = computeSignatureSimilarity(referenceSignature, targetSignature);
+      const signatureScore = Math.round(signature * 1000) / 10;
+      const score = Math.max(0, Math.min(100, baseScore * 0.72 + signatureScore * 0.28));
+
+      return {
+        score: Math.round(score * 10) / 10,
+        colorScore: Math.round(color * 1000) / 10,
+        shapeScore: Math.round(shape * 1000) / 10,
+        signatureScore
+      };
+    }
+
+    async function calculateSimilarityDetail(referenceSrc, targetSrc) {
+      const [referenceImage, targetImage] = await Promise.all([loadImage(referenceSrc), loadImage(targetSrc)]);
+      const refData = getImageData(referenceImage);
+      const maskInfo = buildReferenceMask(refData);
+      const referenceSignature = computeColorSignature(refData, maskInfo);
+      const scaleCandidates = [0.92, 1.0, 1.08];
+      const shiftCandidates = [-8, -4, 0, 4, 8];
+      const rotationCandidates = [-6, -3, 0, 3, 6];
+
+      let best = null;
+
+      // 1차: 정렬 탐색 (위치/크기/회전)
+      for (const scale of scaleCandidates) {
+        for (const shiftX of shiftCandidates) {
+          for (const shiftY of shiftCandidates) {
+            for (const rotationDeg of rotationCandidates) {
+              const targetData = getImageDataWithTransform(
+                targetImage,
+                128,
+                scale,
+                shiftX,
+                shiftY,
+                rotationDeg
+              );
+              const detail = buildSimilarityDetailFromData(
+                refData,
+                targetData,
+                maskInfo,
+                referenceSignature
+              );
+              if (!best || detail.score > best.score) {
+                best = detail;
+              }
+            }
+          }
+        }
+      }
+
+      // 2차: 안전망 (기존 방식 단일 비교) - 탐색이 불리할 경우 대비
+      const baselineData = getImageData(targetImage);
+      const baseline = buildSimilarityDetailFromData(
+        refData,
+        baselineData,
+        maskInfo,
+        referenceSignature
+      );
+      if (!best || baseline.score > best.score) {
+        best = baseline;
+      }
+
+      return best;
+    }
+
+    async function calculateSimilarity(referenceSrc, targetSrc) {
+      const detail = await calculateSimilarityDetail(referenceSrc, targetSrc);
+      return detail.score;
+    }
+
+    function extractOpaqueComponents(turnaroundImage) {
+      const canvas = document.createElement("canvas");
+      canvas.width = turnaroundImage.width;
+      canvas.height = turnaroundImage.height;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(turnaroundImage, 0, 0);
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      const width = canvas.width;
+      const height = canvas.height;
+
+      const visited = new Uint8Array(width * height);
+      const boxes = [];
+      const minPixels = Math.max(3000, Math.floor((width * height) * 0.0022));
+
+      const queueX = new Int32Array(width * height);
+      const queueY = new Int32Array(width * height);
+
+      function alphaAt(x, y) {
+        return data[(y * width + x) * 4 + 3];
+      }
+
+      for (let y = 0; y < height; y += 1) {
+        for (let x = 0; x < width; x += 1) {
+          const startIdx = y * width + x;
+          if (visited[startIdx] || alphaAt(x, y) < 14) {
+            continue;
+          }
+
+          let head = 0;
+          let tail = 0;
+          visited[startIdx] = 1;
+          queueX[tail] = x;
+          queueY[tail] = y;
+          tail += 1;
+
+          let minX = x;
+          let maxX = x;
+          let minY = y;
+          let maxY = y;
+          let count = 0;
+
+          while (head < tail) {
+            const cx = queueX[head];
+            const cy = queueY[head];
+            head += 1;
+            count += 1;
+
+            if (cx < minX) minX = cx;
+            if (cx > maxX) maxX = cx;
+            if (cy < minY) minY = cy;
+            if (cy > maxY) maxY = cy;
+
+            for (let dy = -1; dy <= 1; dy += 1) {
+              for (let dx = -1; dx <= 1; dx += 1) {
+                if (dx === 0 && dy === 0) continue;
+                const nx = cx + dx;
+                const ny = cy + dy;
+                if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+                const nIndex = ny * width + nx;
+                if (visited[nIndex]) continue;
+                if (alphaAt(nx, ny) < 14) continue;
+
+                visited[nIndex] = 1;
+                queueX[tail] = nx;
+                queueY[tail] = ny;
+                tail += 1;
+              }
+            }
+          }
+
+          if (count >= minPixels) {
+            boxes.push({
+              minX,
+              minY,
+              maxX,
+              maxY,
+              area: (maxX - minX + 1) * (maxY - minY + 1),
+              count
+            });
+          }
+        }
+      }
+
+      boxes.sort((a, b) => b.count - a.count);
+      return boxes.slice(0, 7);
+    }
+
+    function boxToDataUrl(sourceImage, box) {
+      const width = box.maxX - box.minX + 1;
+      const height = box.maxY - box.minY + 1;
+      const padding = Math.round(Math.max(width, height) * 0.12);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width + padding * 2;
+      canvas.height = height + padding * 2;
+      const ctx = canvas.getContext("2d");
+
+      ctx.drawImage(
+        sourceImage,
+        box.minX,
+        box.minY,
+        width,
+        height,
+        padding,
+        padding,
+        width,
+        height
+      );
+
+      return canvas.toDataURL("image/png");
+    }
+
+    async function buildTurnaroundPoseSources(turnaroundSrc) {
+      const turnaroundImage = await loadImage(turnaroundSrc);
+      const boxes = extractOpaqueComponents(turnaroundImage);
+      if (boxes.length === 0) {
+        return [turnaroundSrc];
+      }
+
+      boxes.sort((a, b) => {
+        const rowDiff = a.minY - b.minY;
+        if (Math.abs(rowDiff) > 40) return rowDiff;
+        return a.minX - b.minX;
+      });
+
+      return boxes.map((box) => boxToDataUrl(turnaroundImage, box));
+    }
+
+    async function safeCalculateSimilarity(referenceSrc, targetSrc) {
+      try {
+        return await calculateSimilarityDetail(referenceSrc, targetSrc);
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function buildSimilarityReason(defaultInfo, turnBestInfo, finalScore) {
+      const strengths = [];
+      const deductions = [];
+
+      if (defaultInfo.shapeScore >= 72) {
+        strengths.push("몸통 비율과 윤곽선");
+      } else if (defaultInfo.shapeScore < 62) {
+        deductions.push("몸통 비율·포즈 차이");
+      }
+
+      if (defaultInfo.colorScore >= 72) {
+        strengths.push("검정/흰색 배치와 초록 포인트 색감");
+      } else if (defaultInfo.colorScore < 62) {
+        deductions.push("색감·명암 분포 차이");
+      }
+
+      if (defaultInfo.signatureScore >= 72) {
+        strengths.push("캐릭터 고유 색 조합");
+      } else if (defaultInfo.signatureScore < 62) {
+        deductions.push("캐릭터 고유 색 조합 불일치");
+      }
+
+      if (turnBestInfo.score - defaultInfo.score >= 6) {
+        strengths.push("턴어라운드 포즈 중 일부 동작");
+      } else if (turnBestInfo.score < 65) {
+        deductions.push("표정·액세서리 디테일");
+      }
+
+      const strengthText =
+        strengths.length > 0 ? `${strengths.join(", ")}이(가) 기준과 잘 맞아 점수가 올랐고` : "기본 실루엣 유사도가 점수에 긍정적으로 작용했고";
+      const deductionText =
+        deductions.length > 0 ? `${deductions.join(", ")}에서 감점되었습니다.` : "세부 디테일 차이에서 일부 감점되었습니다.";
+
+      if (finalScore >= 82) {
+        return `${strengthText}, ${deductionText}`;
+      }
+      return `${strengthText}, ${deductionText}`;
+    }
+
+    async function calculateCompositeSimilarity(generatedSrc) {
+      const defaultInfo = await safeCalculateSimilarity(state.defaultSrc, generatedSrc);
+      let turnBestInfo = defaultInfo;
+      if (state.turnaroundPoseSources.length > 0) {
+        const turnScoresRaw = await Promise.all(
+          state.turnaroundPoseSources.map((poseSrc) => safeCalculateSimilarity(poseSrc, generatedSrc))
+        );
+        const turnInfos = turnScoresRaw.filter((info) => info && typeof info.score === "number");
+        if (turnInfos.length > 0) {
+          turnBestInfo = turnInfos.reduce((best, cur) => (cur.score > best.score ? cur : best));
+        }
+      }
+
+      if ((!defaultInfo || typeof defaultInfo.score !== "number") && (!turnBestInfo || typeof turnBestInfo.score !== "number")) {
+        throw new Error("브라우저 보안 정책으로 유사도 계산이 제한됩니다. file:// 대신 localhost 주소로 열어 주세요.");
+      }
+
+      const fallbackInfo =
+        defaultInfo && typeof defaultInfo.score === "number" ? defaultInfo : turnBestInfo;
+      const normalizedDefault =
+        defaultInfo && typeof defaultInfo.score === "number" ? defaultInfo : fallbackInfo;
+      const normalizedTurnBest =
+        turnBestInfo && typeof turnBestInfo.score === "number" ? turnBestInfo : fallbackInfo;
+
+      const finalScore = Math.round((normalizedDefault.score * 0.4 + normalizedTurnBest.score * 0.6) * 10) / 10;
+      const reason = buildSimilarityReason(normalizedDefault, normalizedTurnBest, finalScore);
+
+      return {
+        finalScore,
+        defaultScore: normalizedDefault.score,
+        turnBest: normalizedTurnBest.score,
+        reason
+      };
+    }
+
+    async function initializeReferences() {
+      state.defaultSrc = await findFirstLoadableSource(references.defaultCandidates);
+      state.turnaroundSrc = await findFirstLoadableSource(references.turnaroundCandidates);
+
+      if (!state.defaultSrc) {
+        throw new Error("기본 캐릭터 기준 이미지를 찾지 못했습니다.");
+      }
+
+      el.visibleReferencePreview.src = state.defaultSrc;
+
+      if (state.turnaroundSrc) {
+        try {
+          state.turnaroundPoseSources = await buildTurnaroundPoseSources(state.turnaroundSrc);
+        } catch (error) {
+          state.turnaroundPoseSources = [];
+        }
+      } else {
+        state.turnaroundPoseSources = [];
+      }
+    }
+
+    el.generateButton.addEventListener("click", async () => {
+      const prompt = el.prompt.value.trim();
+
+      if (!prompt) {
+        setError("프롬프트를 입력해 주세요.");
+        return;
+      }
+
+      if (!state.defaultSrc) {
+        setError("기준 이미지를 불러오지 못했습니다.");
+        return;
+      }
+
+      el.generateButton.disabled = true;
+      setError("");
+      setModerationDetails([]);
+      setSimilarityBadge(null);
+      clearGeneratedImage();
+
+      try {
+        setStatus("1/4 로컬 안전 키워드 검사 중...");
+        const localCheck = runLocalPromptSafetyCheck(prompt);
+        if (!localCheck.allowed) {
+          setStatus(localCheck.reason);
+          setModerationDetails(localCheck.details);
+          return;
+        }
+
+        setStatus("2/4 OpenAI 모더레이션 검사 중...");
+        const moderation = await moderatePrompt(prompt);
+        const moderationCheck = runModerationSafetyCheck(moderation);
+        if (!moderationCheck.allowed) {
+          setStatus(moderationCheck.reason);
+          setModerationDetails(moderationCheck.details);
+          return;
+        }
+
+        setStatus("3/4 이미지 생성 중...");
+        const finalPrompt = `${safetyPromptPrefix} 사용자 요청: ${prompt}`;
+        state.finalPrompt = finalPrompt;
+
+        const generatedUrl = await generateImage(finalPrompt, {
+          size: el.size.value,
+          quality: el.quality.value,
+          transparent: el.transparent.checked
+        });
+
+        state.generatedImage = generatedUrl;
+        showGeneratedImage(generatedUrl);
+
+        setStatus("4/4 기본+턴어라운드 기준 유사도 계산 중...");
+        const { finalScore, reason } = await calculateCompositeSimilarity(generatedUrl);
+        state.similarity = finalScore;
+        setSimilarityBadge(finalScore);
+        setSimilarityReason(reason);
+        setStatus(`완료: 유사도 ${finalScore.toFixed(1)}%`);
+      } catch (error) {
+        setStatus("생성 실패");
+        setError(error.message || "알 수 없는 오류가 발생했습니다.");
+      } finally {
+        el.generateButton.disabled = false;
+      }
+    });
+
+    initializeGateway();
+
+    initializeReferences()
+      .then(() => {
+        setStatus("준비 완료: 프롬프트를 입력해 주세요.");
+      })
+      .catch((error) => {
+        setError(error.message);
+      });
+  </script>
+</body>
+</html>
